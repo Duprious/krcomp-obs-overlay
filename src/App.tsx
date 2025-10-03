@@ -1,5 +1,24 @@
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import type { MatchHistoryResponse } from './types';
+
+const fetcher = async ([url, token]: [string, string]) => {
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${token}`.replaceAll("\"", ""),
+      'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.0 Electron/12.0.0-nightly.20201116 Safari/537.36",
+      'Origin': "https://krunker.io",
+      'Referer': "https://krunker.io/?game=FRA:929il",
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.status}. Check your Bearer Token.`);
+  }
+
+  return response.json();
+};
+
 
 const getMapName = (mapId: number): string => {
   const mapNames: { [key: number]: string } = { 17: 'Bureau', 11: 'Industry', 2: 'Sandstorm', 0: "Burg", 4: "Undergrowth", 12: "Lumber", 5: "Shipment", 14: "Site", };
@@ -17,9 +36,6 @@ function App() {
   const [krunkerUsername, setKrunkerUsername] = useState('');
   const [apiToken, setApiToken] = useState('');
   const [isConfigured, setIsConfigured] = useState(false);
-  const [playerInfo, setPlayerInfo] = useState<PlayerMatchInfo | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const savedUsername = localStorage.getItem('krunkerUsername');
@@ -28,42 +44,31 @@ function App() {
       setKrunkerUsername(savedUsername);
       setApiToken(savedToken);
       setIsConfigured(true);
-    } else {
-      setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    if (!isConfigured || !apiToken) return;
+  const API_URL = 'https://api.krunker.io/match-history/me/season/2/gameMode/undefined/isRanked/true/region/3?limit=5&offset=0';
 
-    const fetchMatchHistory = async () => {
-      setIsLoading(true);
-      setError(null);
-      setPlayerInfo(null);
+  const { data, error, isLoading } = useSWR<MatchHistoryResponse>(
+    isConfigured ? [API_URL, apiToken] : null,
+    fetcher,
+    {
+      refreshInterval: 4 * 60 * 1000,
+    }
+  );
 
-      try {
-        const response = await fetch('https://api.krunker.io/match-history/me/season/2/gameMode/undefined/isRanked/true/region/3?limit=5&offset=0', {
-          headers: {
-            'Authorization': `Bearer ${apiToken}`.replaceAll("\"", ""),
-            'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.0 Electron/12.0.0-nightly.20201116 Safari/537.36",
-            'Origin': "https://krunker.io",
-            'Referer': "https://krunker.io/?game=FRA:929il",
-          }
-        });
+  let playerInfo: PlayerMatchInfo | null = null;
+  let processingError: string | null = error ? error.message : null;
 
-        if (!response.ok) {
-          throw new Error(`API Error: ${response.status}. Check your Bearer Token.`);
-        }
+  if (data) {
+    try {
+      const latestMatchWithPlayer = data.data.matchHistory.matches.find(match =>
+        match.historyEntries.some(player => player.player_name === krunkerUsername)
+      );
 
-        const data: MatchHistoryResponse = await response.json();
-        const latestMatchWithPlayer = data.data.matchHistory.matches.find(match =>
-          match.historyEntries.some(player => player.player_name === krunkerUsername)
-        );
-
-        if (!latestMatchWithPlayer) {
-          throw new Error(`Username "${krunkerUsername}" not found in your last 5 matches.`);
-        }
-
+      if (!latestMatchWithPlayer) {
+        processingError = `Username "${krunkerUsername}" not found in your last 5 matches.`;
+      } else {
         const playerData = latestMatchWithPlayer.historyEntries.find(p => p.player_name === krunkerUsername);
         if (!playerData) throw new Error("Could not retrieve player data from the match.");
 
@@ -75,22 +80,18 @@ function App() {
           ? playerData.kills.toFixed(1)
           : (playerData.kills / playerData.deaths).toFixed(2);
 
-        setPlayerInfo({
+        playerInfo = {
           isWinner,
           kdRatio,
           mmrChange: playerData.mmr_change,
           mapName: getMapName(latestMatchWithPlayer.map),
-        });
-
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
+        };
       }
-    };
+    } catch (err: any) {
+      processingError = err.message || "Failed to process match data.";
+    }
+  }
 
-    fetchMatchHistory();
-  }, [isConfigured, apiToken, krunkerUsername]);
 
   const handleSave = () => {
     if (krunkerUsername.trim() && apiToken.trim()) {
@@ -106,8 +107,6 @@ function App() {
     localStorage.removeItem('krunkerUsername');
     localStorage.removeItem('apiToken');
     setIsConfigured(false);
-    setPlayerInfo(null);
-    setError(null);
     setKrunkerUsername('');
     setApiToken('');
   };
@@ -156,14 +155,14 @@ function App() {
     <div className="font-sans max-w-xs">
       {isLoading && <div className={`text-center text-gray-200 ${textShadow}`}>Loading Last Match...</div>}
 
-      {error && (
+      {processingError && (
         <div className="bg-red-800 bg-opacity-50 p-3 border border-red-500/50">
           <h3 className={`font-bold text-red-300 ${textShadow}`}>Error</h3>
-          <p className={`text-sm text-white ${textShadow}`}>{error}</p>
+          <p className={`text-sm text-white ${textShadow}`}>{processingError}</p>
         </div>
       )}
 
-      {playerInfo && !isLoading && (
+      {playerInfo && !processingError && (
         <div className={`bg-gray-900 bg-opacity-70 backdrop-blur-md p-4 border ${playerInfo.isWinner ? 'border-green-500/50' : 'border-red-500/50'} text-gray-200`}>
           <div className="text-center pb-3 border-b border-gray-600">
             <h2 className={`text-xs text-gray-200 uppercase tracking-wider font-semibold mb-1 ${textShadow}`}>Last Match</h2>
