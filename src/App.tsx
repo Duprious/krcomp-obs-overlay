@@ -113,7 +113,7 @@ function App() {
 
   if (!isConfigured) {
     return (
-      <div className="font-sans max-w-sm">
+      <div className="z-50 font-sans max-w-sm">
         <div className="bg-gray-900 bg-opacity-80 backdrop-blur-md p-6 border border-gray-700 text-gray-200">
           <h1 className="text-xl font-bold text-center mb-4">Setup Match Overlay</h1>
           <div className="space-y-4">
@@ -163,7 +163,7 @@ function App() {
       )}
 
       {playerInfo && !processingError && (
-        <div className={`bg-gray-900 bg-opacity-70 backdrop-blur-md p-4 border ${playerInfo.isWinner ? 'border-green-500/50' : 'border-red-500/50'} text-gray-200`}>
+        <div className={`z-50 bg-gray-900 bg-opacity-70 backdrop-blur-md p-4 border ${playerInfo.isWinner ? 'border-green-500/50' : 'border-red-500/50'} text-gray-200`}>
           <div className="text-center pb-3 border-b border-gray-600">
             <h2 className={`text-xs text-gray-200 uppercase tracking-wider font-semibold mb-1 ${textShadow}`}>Last Match</h2>
             <h1 className={`text-3xl font-bold ${playerInfo.isWinner ? 'text-green-400' : 'text-red-400'} ${textShadow}`}>{playerInfo.isWinner ? 'VICTORY' : 'DEFEAT'}</h1>
