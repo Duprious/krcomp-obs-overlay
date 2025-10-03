@@ -25,11 +25,17 @@ const getMapName = (mapId: number): string => {
   return mapNames[mapId] || `Map ID: ${mapId}`;
 };
 
+const getRankName = (rankId: number): string => {
+  const rankNames: { [key: number]: string } = { 0: 'Unranked', 1: 'Bronze 1', 2: 'Bronze 2', 3: 'Bronze 3', 4: 'Silver 1', 5: 'Silver 2', 6: 'Silver 3', 7: 'Gold 1', 8: 'Gold 2', 9: 'Gold 3', 10: 'Platinum 1', 11: 'Platinum 2', 12: 'Platinum 3', 13: 'Diamond 1', 14: 'Diamond 2', 15: 'Diamond 3', 16: 'Master 1', 17: 'Master 2', 18: 'Master 3', 19: 'Grandmaster 1', 20: 'Grandmaster 2', 21: 'Grandmaster 3' };
+  return rankNames[rankId] || `Rank ID: ${rankId}`;
+};
+
 interface PlayerMatchInfo {
   isWinner: boolean;
   kdRatio: string;
   mmrChange: number;
   mapName: string;
+  rank: string;
 }
 
 function App() {
@@ -56,6 +62,7 @@ function App() {
       refreshInterval: 4 * 60 * 1000,
     }
   );
+  console.log(data);
 
   let playerInfo: PlayerMatchInfo | null = null;
   let processingError: string | null = error ? error.message : null;
@@ -85,6 +92,7 @@ function App() {
           kdRatio,
           mmrChange: playerData.mmr_change,
           mapName: getMapName(latestMatchWithPlayer.map),
+          rank: getRankName(playerData.rank),
         };
       }
     } catch (err: any) {
@@ -177,6 +185,10 @@ function App() {
             <div className="text-center">
               <div className={`text-xs text-gray-300 uppercase ${textShadow}`}>MMR</div>
               <div className={`text-2xl font-semibold ${playerInfo.mmrChange >= 0 ? 'text-green-400' : 'text-red-400'} ${textShadow}`}>{playerInfo.mmrChange >= 0 ? '+' : ''}{playerInfo.mmrChange}</div>
+            </div>
+            <div className="text-center">
+              <div className={`text-xs text-gray-300 uppercase ${textShadow}`}>Rank</div>
+              <div className={`text-2xl font-semibold text-white ${textShadow}`}>{playerInfo.rank}</div>
             </div>
           </div>
         </div>
