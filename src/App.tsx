@@ -47,7 +47,7 @@ function App() {
     }
   }, []);
 
-  const API_URL = 'https://api.krunker.io/match-history/me/season/2/gameMode/undefined/isRanked/true/region/3?limit=5&offset=0';
+  const API_URL = 'https://api.krunker.io/match-history/me/season/3/gameMode/undefined/isRanked/true/region/3?limit=5&offset=0';
 
   const { data, error, isLoading } = useSWR<MatchHistoryResponse>(
     isConfigured ? [API_URL, apiToken] : null,
